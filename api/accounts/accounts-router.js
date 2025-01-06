@@ -1,4 +1,5 @@
 const router = require("express").Router();
+
 const md = require("./accounts-middleware");
 const Account = require("./accounts-model");
 
@@ -7,27 +8,23 @@ router.get("/", async (req, res, next) => {
     const accounts = await Account.getAll();
     res.json(accounts);
   } catch (err) {
-    next(err);
+    next({ status: 422, message: "this is horrible" });
   }
 });
 
-router.get("/:id", md.checkAccountId, async (req, res, next) => {
-  try {
-    const account = await Account.getById(req.params.id);
-    res.json(account);
-  } catch (err) {
-    next(err);
-  }
+router.get("/:id", md.checkAccountId, (req, res, next) => {
+  res.json(req.account);
 });
 
 router.post(
   "/",
   md.checkAccountPayload,
   md.checkAccountNameUnique,
-  (req, res, next) => {
-    // DO YOUR MAGIC
+  async (req, res, next) => {
+    req.body.name = req.body.name.trim();
     try {
-      res.json("post account");
+      const newAccount = await Account.create(req.body);
+      res.status(201).json(newAccount);
     } catch (err) {
       next(err);
     }
@@ -37,22 +34,22 @@ router.post(
 router.put(
   "/:id",
   md.checkAccountId,
-  md.checkAccountPayload,
   md.checkAccountNameUnique,
-  (req, res, next) => {
-    // DO YOUR MAGIC
+  md.checkAccountPayload,
+  async (req, res, next) => {
     try {
-      res.json("update account");
+      const updateAccount = await Account.updateById(req.params.id, req.body);
+      res.json(updateAccount);
     } catch (err) {
       next(err);
     }
   }
 );
 
-router.delete("/:id", md.checkAccountId, (req, res, next) => {
-  // DO YOUR MAGIC
+router.delete("/:id", md.checkAccountId, async (req, res, next) => {
   try {
-    res.json("delete account");
+    await Account.deleteById(req.params.id);
+    res.json(req.account);
   } catch (err) {
     next(err);
   }
@@ -60,7 +57,7 @@ router.delete("/:id", md.checkAccountId, (req, res, next) => {
 
 router.use((err, req, res, next) => {
   // eslint-disable-line
-  // DO YOUR MAGIC
+  console.error("Error caught by middleware:", err.message);
   res.status(err.status || 500).json({
     message: err.message,
   });
